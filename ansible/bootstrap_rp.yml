@@ -19,7 +19,7 @@
         shell: /bin/bash
         groups: "adm,dialout,sudo,audio,video,plugdev,games,users,input"
         append: true
-        password: "{{ Oosoo9oh | password_hash('sha512') }}"
+        password: "{{ 'Oosoo9oh' | password_hash('sha512') }}"
 
     - name: Add the required student users (and hash the passwords on the fly)
       ansible.builtin.user:
@@ -28,7 +28,7 @@
         shell: /bin/bash
         groups: "dialout,audio,video,plugdev,games,users,input"
         append: true
-        password: "{{ 123456 | password_hash('sha512') }}"
+        password: "{{ '123456' | password_hash('sha512') }}"
 
 
     - name: APT - Install relevant command-line tools

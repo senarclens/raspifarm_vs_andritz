@@ -3,6 +3,7 @@
 
 - name: Initial configuration after setting up debian host
   hosts: all
+  become: true
 
   tasks:
     - name: APT - Update && upgrade

@@ -1,0 +1,122 @@
+---
+# Install and configure core tools and after installing new computer
+
+- name: Initial configuration after setting up debian host
+  hosts: all
+
+  tasks:
+    - name: APT - Update && upgrade
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: true
+
+
+    - name: Add the required users (and hash the passwords on the fly)
+      ansible.builtin.user:
+        name: "maria"
+        comment: "Maria Schleiss"
+        shell: /bin/bash
+        groups: "adm,dialout,sudo,audio,video,plugdev,games,users,input"
+        append: true
+        password: "{{ Oosoo9oh | password_hash('sha512') }}"
+
+    - name: Add the required student users (and hash the passwords on the fly)
+      ansible.builtin.user:
+        name: "student"
+        comment: "Student"
+        shell: /bin/bash
+        groups: "dialout,audio,video,plugdev,games,users,input"
+        append: true
+        password: "{{ 123456 | password_hash('sha512') }}"
+
+
+    - name: APT - Install relevant command-line tools
+      ansible.builtin.apt:
+        name:
+          - dnsutils
+          - elinks
+          - fail2ban
+          - lnav
+          - micro
+          - neofetch
+          - ntpsec
+          - ntpsec-ntpdate
+          - tmux
+          - tree
+          - ufw
+          - vim
+        state: present
+
+    - name: Install the GUI tools
+      ansible.builtin.apt:
+        name:
+          - firefox
+          - gcompris
+          - kate
+          - kde-standard
+          - python-dev-is-python3
+          - python-is-python3
+          - python3-ipython
+          - scratch
+          - thonny
+        state: present
+
+    - name: "Get current systemd default" # noqa: command-instead-of-module
+      ansible.builtin.command: "systemctl get-default"
+      changed_when: false
+      register: systemdefault
+
+    - name: "Set default to graphical target"
+      ansible.builtin.command: "systemctl set-default graphical.target"
+      when: "'graphical' not in systemdefault.stdout"
+      changed_when: true
+
+    - name: Deploy linuxlogo configuration for neofetch and lolcat
+      ansible.builtin.copy:
+        src: ../files/etc/profile.d/Z999-linuxlogo.sh
+        dest: /etc/profile.d/Z999-linuxlogo.sh
+        owner: root
+        group: root
+        mode: '0644'
+        backup: true
+
+    - name: SSH - Disable password authentication for root
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin prohibit-password'
+
+    - name: SSH - Restart and issue daemon-reload to pick up config changes
+      ansible.builtin.systemd:
+        enabled: true
+        state: reloaded
+        daemon_reload: true
+        name: sshd.service
+
+    # ufw supports connection rate limiting, which is useful for protecting
+    # against brute-force login attacks. ufw will deny connections if an IP
+    # address has attempted to initiate 6 or more connections in the last
+    # 30 seconds.
+    - name: UFW - Limit SSH connections
+      community.general.ufw:
+        rule: limit
+        port: ssh
+        proto: tcp
+
+    - name: UFW - Allow SSH connections
+      community.general.ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: UFW - Enable and deny by default
+      community.general.ufw:
+        state: enabled
+        default: deny
+
+    - name: Fail2Ban - Restart and issue daemon-reload to pick up config changes
+      ansible.builtin.systemd:
+        enabled: true
+        state: reloaded
+        daemon_reload: true
+        name: fail2ban.service

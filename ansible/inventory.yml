@@ -1,0 +1,3 @@
+all:
+  hosts:
+    rp[01:07].local:
